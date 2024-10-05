@@ -15,8 +15,6 @@ exports.userFindSave = async (req, res) => {
     const user = await UserProfile.findOne({ telegramId: telegramId });
     const currentTime = new Date().toUTCString();
 
-    console.log(user);
-    
     if (!user) {
       // Create new user
       const newUser = new UserProfile({
@@ -53,6 +51,10 @@ exports.userDataSave = async (req, res) => {
     
     const user = await UserProfile.findOne({ telegramId: telegramId });
     if (user) {
+      if(user.bestScore < score){
+        user.bestScore = score;
+      }
+
       const currentTime = new Date().toUTCString();
       // Create a new GameSession
       const newGameSession = new GameSession({
