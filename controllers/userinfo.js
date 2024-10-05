@@ -4,11 +4,6 @@ const { UserProfile, GameSession } = require("../models/User");
 exports.userFindSave = async (req, res) => {
   try {
     // Get user information from the request body
-    const data = req.body;
-    const userData = JSON.parse(data.data);
-
-    console.log(userData);
-    
     const telegramId = req.body.telegramId;
     const firstName = req.body.firstName;
     const lastName = req.body.lastName;
@@ -49,8 +44,6 @@ exports.userDataSave = async (req, res) => {
     const telegramId = req.body.telegramId;
     const score = req.body.score;
     
-    // const userData = JSON.parse(data.data);
-
     const user = await UserProfile.findOne({ telegramId: telegramId });
     if (user) {
       const currentTime = new Date().toUTCString();
