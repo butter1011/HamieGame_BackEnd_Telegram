@@ -1,5 +1,4 @@
 const { UserProfile, GameSession } = require("../models/User");
-// const ReferralInfo = require("../models/Inviter");
 
 // UserFindSave if not user, create it
 exports.userFindSave = async (req, res) => {
@@ -23,13 +22,6 @@ exports.userFindSave = async (req, res) => {
       });
 
       await newUser.save(); // Save the new user
-
-      // Create new Referral
-      // const newReferral = new ReferralInfo({
-      //   user_id: user_id,
-      // });
-
-      // await newReferral.save(); // Save the Referral
 
       res.status(200).json({
         newUser,
@@ -73,29 +65,3 @@ exports.userDataSave = async (req, res) => {
     res.status(401).json(error);
   }
 };
-
-// Wallet Save
-// exports.setWalletAddress = async (req, res) => {
-//   try {
-//     const data = req.body;
-//     const wallet_address = data.data.wallet_address;
-//     const wallet_name = data.data.wallet_name;
-//     const user_id = data.data.user_id;
-//     console.log("Wallet Address: ", wallet_address);
-//     console.log("Wallet Name: ", wallet_name);
-//     console.log("User ID: ", user_id);
-
-//     const user = await ReferralInfo.findOne({ user_id: user_id });
-//     if (user) {
-//       user.walletAddress = wallet_address;
-//       user.walletName = wallet_name;
-//       response = await user.save();
-//       console.log(response);
-//       res.status(200).json("OK");
-//     }
-
-//     res.status(404).json("User not found");
-//   } catch (error) {
-//     res.status(401).json(error);
-//   }
-// };
