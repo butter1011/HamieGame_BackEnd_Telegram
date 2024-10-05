@@ -3,7 +3,7 @@ const { UserProfile, GameSession } = require("../models/User");
 // UserFindSave if not user, create it
 exports.userFindSave = async (req, res) => {
   try {
-    // Get user information from the request body
+    // Get user information from the request body 
     const telegramId = req.body.telegramId;
     const firstName = req.body.firstName;
     const lastName = req.body.lastName;
