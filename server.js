@@ -15,7 +15,7 @@ app.use(express.json());
 app.use(
   cors({
     origin: [
-      "https://hamie-game-telegram.vercel.app"
+      "https://hamie-game-telegram.vercel.app/"
     ]
   })
 );
