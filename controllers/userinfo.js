@@ -4,6 +4,7 @@ const { UserProfile, GameSession } = require("../models/User");
 exports.userFindSave = async (req, res) => {
   try {
     // Get user information from the request body 
+    console.log(req.body)
     const data = req.body.data;
     const userData = JSON.parse(data);
 
@@ -15,7 +16,7 @@ exports.userFindSave = async (req, res) => {
     const user = await UserProfile.findOne({ telegramId: telegramId });
     const currentTime = new Date().toUTCString();
 
-    if (!user) {
+    if (!user || !user.telegramId) {
       // Create new user
       const newUser = new UserProfile({
         telegramId: telegramId,
@@ -31,7 +32,9 @@ exports.userFindSave = async (req, res) => {
         currentTime,
       });
     } else {
-      res.status(200).json({
+      console.log(user);
+      
+      res.status(201).json({
         user,
         currentTime,
       });
@@ -68,6 +71,22 @@ exports.userDataSave = async (req, res) => {
       await user.save();
     }
     res.status(200).json("Updated Successfully");
+  } catch (error) {
+    res.status(401).json(error);
+  }
+};
+
+exports.userList = async (req, res) => {
+  try {
+    // Get user information from the request body 
+    const currentTime = new Date().toUTCString();
+    const userlist = await UserProfile.find().sort({ bestScore: -1 }).limit(100);
+    res.status(201).json({
+      userlist,
+      currentTime
+    }); 
+    console.log(userlist);
+    
   } catch (error) {
     res.status(401).json(error);
   }
