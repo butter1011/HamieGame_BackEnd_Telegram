@@ -11,7 +11,7 @@ exports.userFindSave = async (req, res) => {
     const telegramId = userData.telegramId;
     const firstName = userData.firstName;
     const lastName = userData.lastName;
-    const username = userData.username;
+    const username = userData.userName;
     
     const user = await UserProfile.findOne({ telegramId: telegramId });
     const currentTime = new Date().toUTCString();
@@ -34,17 +34,18 @@ exports.userFindSave = async (req, res) => {
     } else {
       console.log(user);
       
+      // Get the rank for bestscore
+      const bestScoreRank = await UserProfile.countDocuments({ bestScore: { $gt: user.bestScore } }) + 1;
+
       res.status(201).json({
         user,
-        currentTime,
+        bestScoreRank,
       });
     }
   } catch (error) {
     res.status(401).json(error);
   }
-};
-
-// UserData Save
+};// UserData Save
 exports.userDataSave = async (req, res) => {
   try {
     const data = req.body.data;
