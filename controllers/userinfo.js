@@ -4,7 +4,6 @@ const { UserProfile, GameSession } = require("../models/User");
 exports.userFindSave = async (req, res) => {
   try {
     // Get user information from the request body 
-    console.log(req.body)
     const data = req.body.data;
     const userData = JSON.parse(data);
 
@@ -16,7 +15,7 @@ exports.userFindSave = async (req, res) => {
     const user = await UserProfile.findOne({ telegramId: telegramId });
     const currentTime = new Date().toUTCString();
 
-    if (!user || !user.telegramId) {
+    if (!user && telegramId != 0) {
       // Create new user
       const newUser = new UserProfile({
         telegramId: telegramId,
@@ -32,11 +31,9 @@ exports.userFindSave = async (req, res) => {
         currentTime,
       });
     } else {
-      console.log(user);
-      
       // Get the rank for bestscore
       const bestScoreRank = await UserProfile.countDocuments({ bestScore: { $gt: user.bestScore } }) + 1;
-
+      console.log(bestScoreRank);
       res.status(201).json({
         user,
         bestScoreRank,
