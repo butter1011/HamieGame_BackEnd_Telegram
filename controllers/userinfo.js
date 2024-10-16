@@ -11,7 +11,6 @@ exports.userFindSave = async (req, res) => {
     const firstName = userData.firstName;
     const lastName = userData.lastName;
     const username = userData.userName;
-    const phoneNumber = userData.phoneNumber; // Add this line to get the phone number
 
     const user = await UserProfile.findOne({ telegramId: telegramId });
     const currentTime = new Date().toUTCString();
