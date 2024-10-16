@@ -22,7 +22,6 @@ exports.userFindSave = async (req, res) => {
         username: username,
         firstName: firstName,
         lastName: lastName,
-        phoneNumber: phoneNumber, // Add this line to save the phone number
       });
 
       await newUser.save(); // Save the new user
@@ -32,12 +31,6 @@ exports.userFindSave = async (req, res) => {
         currentTime,
       });
     } else if (user) {
-      // Update existing user's phone number if it's provided
-      if (phoneNumber) {
-        user.phoneNumber = phoneNumber;
-        await user.save();
-      }
-
       // Get the rank for bestscore
       const bestScoreRank = await UserProfile.countDocuments({ bestScore: { $gt: user.bestScore } }) + 1;
       console.log(bestScoreRank);
