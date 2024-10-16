@@ -11,7 +11,8 @@ exports.userFindSave = async (req, res) => {
     const firstName = userData.firstName;
     const lastName = userData.lastName;
     const username = userData.userName;
-    
+    const phoneNumber = userData.phoneNumber; // Add this line to get the phone number
+
     const user = await UserProfile.findOne({ telegramId: telegramId });
     const currentTime = new Date().toUTCString();
 
@@ -22,6 +23,7 @@ exports.userFindSave = async (req, res) => {
         username: username,
         firstName: firstName,
         lastName: lastName,
+        phoneNumber: phoneNumber, // Add this line to save the phone number
       });
 
       await newUser.save(); // Save the new user
@@ -30,7 +32,13 @@ exports.userFindSave = async (req, res) => {
         newUser,
         currentTime,
       });
-    } else {
+    } else if (user) {
+      // Update existing user's phone number if it's provided
+      if (phoneNumber) {
+        user.phoneNumber = phoneNumber;
+        await user.save();
+      }
+
       // Get the rank for bestscore
       const bestScoreRank = await UserProfile.countDocuments({ bestScore: { $gt: user.bestScore } }) + 1;
       console.log(bestScoreRank);
@@ -38,11 +46,15 @@ exports.userFindSave = async (req, res) => {
         user,
         bestScoreRank,
       });
+    } else {
+      res.status(400).json({ error: "Invalid user data" });
     }
   } catch (error) {
     res.status(401).json(error);
   }
-};// UserData Save
+};
+
+// UserData Save
 exports.userDataSave = async (req, res) => {
   try {
     const data = req.body.data;
