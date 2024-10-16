@@ -11,6 +11,7 @@ const userProfileSchema = new mongoose.Schema({
   username: String,
   firstName: String,
   lastName: String,
+  phoneNumber: String,
   createdAt: {
     type: Date,
     default: () => new Date().toUTCString()
