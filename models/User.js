@@ -11,19 +11,19 @@ const userProfileSchema = new mongoose.Schema({
   username: String,
   firstName: String,
   lastName: String,
-  createdAt: {
-    type: Date,
-    default: () => new Date().toUTCString()
-  },
-  updatedAt: {
-    type: Date,
-    default: () => new Date().toUTCString()
-  },
+  // createdAt: {
+  //   type: Date,
+  //   default: () => new Date().toUTCString()
+  // },
+  // updatedAt: {
+  //   type: Date,
+  //   default: () => new Date().toUTCString()
+  // },
   bestScore: {
     type: Number,
     default: 0
-  }
-});
+  },
+},{timestamps:true});
 
 // Game Session Schema
 const gameSessionSchema = new mongoose.Schema({
