@@ -122,7 +122,7 @@ exports.userList = async (req, res) => {
     // Retrieve users created since last Sunday
     const userlist = await UserProfile.find({
       updatedAt: { $gte: lastSunday }
-    }).sort({ bestScore: -1 }).limit(100);
+    }).sort({ weeklyBestScore: -1 }).limit(100);
 
     // Retrieve the item with the best score from all items in the database
     const bestItem = await UserProfile.findOne().sort({ bestScore: -1 });
