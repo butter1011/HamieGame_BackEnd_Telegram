@@ -57,8 +57,26 @@ exports.userDataSave = async (req, res) => {
     
     const user = await UserProfile.findOne({ telegramId: telegramId });
     if (user) {
+
+      const currentDate = new Date();
+      const lastSunday = new Date(currentDate);
+      lastSunday.setUTCHours(0, 0, 0, 0);
+      
+      // Calculate last Sunday
+      const daysSinceSunday = lastSunday.getUTCDay();
+      lastSunday.setUTCDate(lastSunday.getUTCDate() - daysSinceSunday);
+      
+      // Check if user's last update was before last Sunday
+      if (user.updatedAt < lastSunday) {
+        user.weeklyBestScore = 0;
+      }
+
+
       if(user.bestScore < score){
         user.bestScore = score;
+      }
+      if(user.weeklyBestScore < score){
+        user.weeklyBestScore = score;
       }
 
       const currentTime = new Date().toUTCString();
