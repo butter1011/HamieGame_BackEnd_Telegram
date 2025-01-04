@@ -142,3 +142,22 @@ exports.userList = async (req, res) => {
   }
 }
 
+// Add this new function to userinfo.js
+exports.getUsersByNameAndScore = async (req, res) => {
+  try {
+    // Get all users sorted by bestScore in descending order
+    const users = await UserProfile.find({})
+      .select('firstName lastName username bestScore')
+      .sort({ bestScore: -1 })
+      .lean();
+
+    const currentTime = new Date().toUTCString();
+
+    res.status(200).json({
+      users,
+      currentTime
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
