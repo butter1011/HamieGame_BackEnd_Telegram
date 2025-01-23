@@ -1,11 +1,41 @@
 const { UserProfile, GameSession } = require("../models/User");
+const cron = require('node-cron');
+
+
+// Daily reset at midnight UTC
+cron.schedule('0 0 * * *', async () => {
+  try {
+    await UserProfile.updateMany(
+      {},
+      { $set: { dailyBestScore: 0 } }
+    );
+    console.log('Daily scores reset successfully');
+  } catch (error) {
+    console.error('Error resetting daily scores:', error);
+  }
+});
+
+// Weekly reset at midnight UTC on Sunday
+cron.schedule('0 0 * * 0', async () => {
+  try {
+    await UserProfile.updateMany(
+      {},
+      { $set: { weeklyBestScore: 0 } }
+    );
+    console.log('Weekly scores reset successfully');
+  } catch (error) {
+    console.error('Error resetting weekly scores:', error);
+  }
+});
+
+
 
 // UserFindSave if not user, create it
 exports.userFindSave = async (req, res) => {
   try {
     // Get user information from the request body 
     const data = req.body.data;
-    
+
     const userData = JSON.parse(data);
 
     const telegramId = userData.telegramId;
@@ -34,7 +64,7 @@ exports.userFindSave = async (req, res) => {
     } else if (user) {
       // Get the rank for bestscore
       const bestScoreRank = await UserProfile.countDocuments({ bestScore: { $gt: user.bestScore } }) + 1;
-  
+
       res.status(201).json({
         user,
         bestScoreRank,
@@ -54,18 +84,18 @@ exports.userDataSave = async (req, res) => {
     const userData = JSON.parse(data);
     const telegramId = userData.telegramId;
     const score = userData.score;
-    
+
     const user = await UserProfile.findOne({ telegramId: telegramId });
     if (user) {
       const currentDate = new Date();
       const today = new Date(currentDate);
       today.setUTCHours(0, 0, 0, 0);
-      
+
       const lastSunday = new Date(currentDate);
-    
+
       lastSunday.setUTCHours(0, 0, 0, 0);
       const daysSinceSunday = lastSunday.getUTCDay();
-      
+
       lastSunday.setUTCDate(lastSunday.getUTCDate() - daysSinceSunday);
 
 
@@ -109,7 +139,7 @@ exports.userDataSave = async (req, res) => {
 exports.getDailyData = async (req, res) => {
 
   try {
-    console.log("getUserMetrics💖🐱‍🐉");
+
     const today = new Date();
     today.setUTCHours(0, 0, 0, 0);
 
@@ -117,23 +147,23 @@ exports.getDailyData = async (req, res) => {
     const userlist = await UserProfile.find({
       updatedAt: { $gte: today }
     })
-    .sort({ dailyBestScore: -1 })
-    .limit(100);
+      .sort({ dailyBestScore: -1 });
+    const averageDailyScore = userlist.reduce((sum, user) => sum + user.dailyBestScore, 0) / userlist.length;
 
     // Get top 100 sessions for today
     const sessions = await GameSession.find({
       startTime: { $gte: today }
     })
-    .populate('user', 'username firstName lastName')
-    .sort({ score: -1 })
-    .limit(100);
+      .populate('user', 'username firstName lastName')
+      .sort({ score: -1 });
 
     const currentTime = new Date().toUTCString();
 
     res.status(200).json({
       userlist,
       sessions,
-      currentTime
+      currentTime,
+      averageScore: Math.round(averageDailyScore * 10) / 10,
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -144,12 +174,12 @@ exports.getDailyData = async (req, res) => {
 exports.getWeeklyData = async (req, res) => {
 
   try {
-    console.log("getUserMetrics💖🤞");
+
     const currentDate = new Date();
     const lastSunday = new Date(currentDate);
-    
+
     lastSunday.setUTCHours(0, 0, 0, 0);
-    
+
     const daysSinceSunday = lastSunday.getUTCDay();
     lastSunday.setUTCDate(lastSunday.getUTCDate() - daysSinceSunday);
 
@@ -157,56 +187,132 @@ exports.getWeeklyData = async (req, res) => {
     const userlist = await UserProfile.find({
       updatedAt: { $gte: lastSunday }
     })
-    .sort({ weeklyBestScore: -1 })
-    .limit(100);
-
+      .sort({ weeklyBestScore: -1 })
+    const averageWeeklyScore = userlist.reduce((sum, user) => sum + user.weeklyBestScore, 0) / userlist.length;
+    const bestUser = await UserProfile.findOne().sort({ bestScore: -1 });
     // Get top 100 sessions for the week
     const sessions = await GameSession.find({
       startTime: { $gte: lastSunday }
     })
-    .populate('user', 'username firstName lastName')
-    .sort({ score: -1 })
-    .limit(100);
-
-    const currentTime = new Date().toUTCString();
-
-    res.status(200).json({
-      userlist,
-      sessions,
-      currentTime
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-// Get all-time leaderboard and sessions
-exports.getTotalData = async (req, res) => {
-
-  try {
-    console.log("getUserMetrics💖😎");
-    // Get top 100 users all-time
-    const userlist = await UserProfile.find()
-      .sort({ bestScore: -1 })
-      .limit(100);
-
-    // Get top 100 sessions all-time
-    const sessions = await GameSession.find()
       .populate('user', 'username firstName lastName')
       .sort({ score: -1 })
-      .limit(100);
+      ;
 
     const currentTime = new Date().toUTCString();
-    // console.log(userlist);
+
     res.status(200).json({
       userlist,
       sessions,
+      averageScore: Math.round(averageWeeklyScore * 10) / 10,
+      currentTime,
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.getWeeklyDataForLeard = async (req, res) => {
+  try {
+    const currentDate = new Date();
+    const lastSunday = new Date(currentDate);
+    lastSunday.setUTCHours(0, 0, 0, 0);
+    const daysSinceSunday = lastSunday.getUTCDay();
+    lastSunday.setUTCDate(lastSunday.getUTCDate() - daysSinceSunday);
+
+    // Get weekly active users with score > 30
+    const weeklyUsers = await UserProfile.find({
+      updatedAt: { $gte: lastSunday },
+      weeklyBestScore: { $gt: 30 }
+    }).sort({ weeklyBestScore: -1 });
+
+    // Get additional users with score > 30
+    const additionalUsers = await UserProfile.find({
+      _id: { $nin: weeklyUsers.map(user => user._id) },
+      weeklyBestScore: { $lt: 30 }
+    }).sort({ weeklyBestScore: -1 });
+
+
+    // Combine and sort all users
+    const userlist = [...weeklyUsers, ...additionalUsers]
+      .sort((a, b) => {
+        const scoreA = a.weeklyBestScore;
+        const scoreB = b.weeklyBestScore;
+        return scoreB - scoreA;
+      })
+      .slice(0, 100);
+
+    const bestUser = await UserProfile.findOne().sort({ bestScore: -1 });
+
+
+
+    const currentTime = new Date().toUTCString();
+
+    res.status(200).json({
+      userlist,
+      bestUser,
       currentTime
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
+
+exports.getTotalData = async (req, res) => {
+  try {
+    // Get users who have at least one session using aggregation
+    const userlist = await UserProfile.aggregate([
+      {
+        $lookup: {
+          from: 'gamesessions',
+          let: { userId: '$_id' },
+          pipeline: [
+            {
+              $match: {
+                $expr: { $eq: ['$user', '$$userId'] }
+              }
+            },
+            { $limit: 1 }
+          ],
+          as: 'sessionCheck'
+        }
+      },
+      {
+        $match: {
+          'sessionCheck.0': { $exists: true }
+        }
+      },
+      {
+        $project: {
+          sessionCheck: 0 // Remove the sessionCheck field from output
+        }
+      },
+      {
+        $sort: { bestScore: -1 }
+      }
+    ]);
+
+    // Get all sessions with user details
+    const sessions = await GameSession.find()
+      .populate('user', 'username firstName lastName')
+      .sort({ score: -1 });
+
+    const averageBestScore = userlist.reduce((sum, user) => sum + user.bestScore, 0) / userlist.length;
+    const currentTime = new Date().toUTCString();
+
+    res.status(200).json({
+      userlist,
+      sessions,
+      averageScore: Math.round(averageBestScore * 10) / 10,
+      currentTime
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+
+
+
 
 // Get users sorted by their session counts
 exports.getUsersBySessionCount = async (req, res) => {
@@ -265,6 +371,7 @@ exports.getUsersBySessionCount = async (req, res) => {
 
 // Get session statistics for specific time periods
 exports.getSessionStats = async (req, res) => {
+
   try {
     const today = new Date();
     today.setUTCHours(0, 0, 0, 0);
@@ -320,11 +427,34 @@ exports.getSessionStats = async (req, res) => {
       { $unwind: '$userDetails' }
     ]);
 
+    // Get total session stats (all-time)
+    const totalStats = await GameSession.aggregate([
+      {
+        $group: {
+          _id: '$user',
+          sessionCount: { $sum: 1 },
+          highestScore: { $max: '$score' }
+        }
+      },
+      { $sort: { sessionCount: -1 } },
+
+      {
+        $lookup: {
+          from: 'userprofiles',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'userDetails'
+        }
+      },
+      { $unwind: '$userDetails' }
+    ]);
+
     const currentTime = new Date().toUTCString();
 
     res.status(200).json({
       dailyStats,
       weeklyStats,
+      totalStats,
       currentTime
     });
   } catch (error) {
@@ -332,9 +462,10 @@ exports.getSessionStats = async (req, res) => {
   }
 };
 
+
 exports.getUserMetrics = async (req, res) => {
   try {
-    console.log("getUserMetrics💖💖");
+
     const today = new Date();
     today.setUTCHours(0, 0, 0, 0);
 
@@ -347,12 +478,12 @@ exports.getUserMetrics = async (req, res) => {
     const [totalUsers, weeklyActiveUsers, dailyActiveUsers] = await Promise.all([
       // Total registered users
       UserProfile.countDocuments(),
-      
+
       // Weekly active users (users who played since last Sunday)
       UserProfile.countDocuments({
         updatedAt: { $gte: lastSunday }
       }),
-      
+
       // Daily active users (users who played today)
       UserProfile.countDocuments({
         updatedAt: { $gte: today }
@@ -375,8 +506,44 @@ exports.getUserMetrics = async (req, res) => {
 };
 
 
+exports.getFrequentUsers = async (req, res) => {
+  try {
+    const frequentUsers = await GameSession.aggregate([
+      {
+        $group: {
+          _id: '$user',
+          totalScore: { $sum: '$score' }
+        }
+      },
+      {
+        $lookup: {
+          from: 'userprofiles',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'userDetails'
+        }
+      },
+      { $unwind: '$userDetails' },
+      {
+        $project: {
+          username: '$userDetails.username',
+          firstName: '$userDetails.firstName',
+          lastName: '$userDetails.lastName',
+          totalScore: 1
+        }
+      },
+      { $sort: { totalScore: -1 } },
+      { $limit: 10 }
+    ]);
 
 
 
+    res.status(200).json({
+      frequentUsers,
 
-// Add this new function to userinfo.js
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
