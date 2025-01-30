@@ -12,13 +12,7 @@ require("./libs/mongodb");
 const app = express();
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(express.json());
-// app.use(
-//   cors({
-//     origin: [
-//       "https://hamie-game-telegram.vercel.app"
-//     ]
-//   })
-// );
+app.use(cors("*"));
 
 //api
 app.use(userinfoApi);

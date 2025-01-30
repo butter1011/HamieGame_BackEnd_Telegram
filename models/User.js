@@ -11,19 +11,21 @@ const userProfileSchema = new mongoose.Schema({
   username: String,
   firstName: String,
   lastName: String,
-  createdAt: {
-    type: Date,
-    default: () => new Date().toUTCString()
+  dailyBestScore: {
+    type: Number,
+    default: 0
   },
-  updatedAt: {
-    type: Date,
-    default: () => new Date().toUTCString()
+  weeklyBestScore: {
+    type: Number,
+    default: 0
   },
   bestScore: {
     type: Number,
     default: 0
   }
-});
+}, { timestamps: true });
+
+
 
 // Game Session Schema
 const gameSessionSchema = new mongoose.Schema({
@@ -43,7 +45,6 @@ const gameSessionSchema = new mongoose.Schema({
   endTime: Date
 });
 
-// Create models
 const UserProfile = mongoose.model('UserProfile', userProfileSchema);
 const GameSession = mongoose.model('GameSession', gameSessionSchema);
 
