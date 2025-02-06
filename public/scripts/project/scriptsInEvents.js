@@ -23,7 +23,7 @@ const scriptsInEvents = {
 		runtime.callFunction("updateData");
 	},
 
-	async EventMenu_Event5_Act6(runtime, localVars)
+	async EventMenu_Event7_Act4(runtime, localVars)
 	{
 		if (window.Telegram.WebApp) {
 			Telegram.WebApp.ready();
@@ -62,6 +62,7 @@ const scriptsInEvents = {
 		
 			
 		}
+		
 		
 	},
 
