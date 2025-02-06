@@ -1898,9 +1898,7 @@ self.C3_ExpressionFuncs = [
 		p => {
 			const v0 = p._GetNode(0).GetVar();
 			return () => (175 + (v0.GetValue() * 830));
-		},
-		() => "HideFader",
-		() => "ShowFader"
+		}
 ];
 
 

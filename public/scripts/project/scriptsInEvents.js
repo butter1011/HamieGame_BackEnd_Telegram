@@ -23,7 +23,7 @@ const scriptsInEvents = {
 		runtime.callFunction("updateData");
 	},
 
-	async EventMenu_Event3_Act3(runtime, localVars)
+	async EventMenu_Event5_Act6(runtime, localVars)
 	{
 		if (window.Telegram.WebApp) {
 			Telegram.WebApp.ready();
@@ -82,23 +82,9 @@ const scriptsInEvents = {
 		
 	},
 
-	async Event_leaderboard_Event5_Act2(runtime, localVars)
-	{
-		console.log(JSON);
-	},
-
-	async Event_leaderboard_Event8_Act1(runtime, localVars)
+	async Event_leaderboard_Event7_Act1(runtime, localVars)
 	{
 		runtime.callFunction("InitScreen");
-	},
-
-	async Event_tuturial_Event1_Act1(runtime, localVars)
-	{
-		// if (window.Telegram.WebApp) {
-		// 	Telegram.WebApp.ready();
-		// 	window.Telegram.WebApp.expand();
-		// }
-		
 	}
 
 };

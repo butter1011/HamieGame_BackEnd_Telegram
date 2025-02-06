@@ -78,8 +78,8 @@ self.C3_GetObjectRefTable = function () {
 		C3.Plugins.System.Exps.rgbex,
 		C3.Plugins.Sprite.Exps.ColorValue,
 		C3.Plugins.LocalStorage.Acts.CheckItemExists,
-		C3.ScriptsInEvents.EventMenu_Event3_Act3,
 		C3.Plugins.Touch.Cnds.IsTouchingObject,
+		C3.ScriptsInEvents.EventMenu_Event5_Act6,
 		C3.Plugins.Text.Acts.SetVisible,
 		C3.Plugins.Sprite.Acts.SetVisible,
 		C3.Plugins.Touch.Cnds.OnTapGesture,
@@ -99,9 +99,8 @@ self.C3_GetObjectRefTable = function () {
 		C3.Plugins.System.Exps.tokencount,
 		C3.Plugins.System.Acts.ResetEventVar,
 		C3.ScriptsInEvents.Event_leaderboard_Event3_Act5,
-		C3.ScriptsInEvents.Event_leaderboard_Event5_Act2,
 		C3.Plugins.Json.Cnds.ForEach,
-		C3.ScriptsInEvents.Event_leaderboard_Event8_Act1,
+		C3.ScriptsInEvents.Event_leaderboard_Event7_Act1,
 		C3.Plugins.System.Cnds.For,
 		C3.Plugins.System.Exps.loopindex,
 		C3.Plugins.Sprite.Acts.AddChild,
@@ -114,10 +113,7 @@ self.C3_GetObjectRefTable = function () {
 		C3.Plugins.Sprite.Acts.SetY,
 		C3.Plugins.System.Cnds.CompareBoolVar,
 		C3.Behaviors.DragnDrop.Cnds.IsDragging,
-		C3.Plugins.Touch.Exps.X,
-		C3.ScriptsInEvents.Event_tuturial_Event1_Act1,
-		C3.Behaviors.Tween.Acts.TweenOneProperty,
-		C3.Behaviors.Tween.Cnds.OnTweensFinished
+		C3.Plugins.Touch.Exps.X
 	];
 };
 self.C3_JsPropNameTable = [
@@ -173,7 +169,6 @@ self.C3_JsPropNameTable = [
 	{Orig_Width: 0},
 	{Orig_Height: 0},
 	{Menu_Panel: 0},
-	{Particles22: 0},
 	{Cup: 0},
 	{Sine2: 0},
 	{menutitle: 0},
@@ -319,7 +314,6 @@ self.InstanceType = {
 	top_5: class extends self.ISpriteInstance {},
 	Cscore_count: class extends self.ITextInstance {},
 	Menu_Panel: class extends self.ISpriteInstance {},
-	Particles22: class extends self.IParticlesInstance {},
 	Cup: class extends self.ISpriteInstance {},
 	menutitle: class extends self.ISpriteInstance {},
 	background_tuturial: class extends self.ISpriteInstance {},
