@@ -16,17 +16,38 @@ cron.schedule('0 0 * * *', async () => {
 });
 
 // Weekly reset at midnight UTC on Sunday
+// Weekly reset at midnight UTC on Sunday
 cron.schedule('0 0 * * 0', async () => {
   try {
-    await UserProfile.updateMany(
-      {},
-      { $set: { weeklyBestScore: 0 } }
-    );
-    console.log('Weekly scores reset successfully');
+    // Get all users
+    const users = await UserProfile.find({});
+    
+    for (const user of users) {
+      // Count sessions for this user
+      const sessionCount = await GameSession.countDocuments({ user: user._id });
+      
+      if (sessionCount > 1) {
+        // If user has more than 1 session, reset to 0
+        await UserProfile.updateOne(
+          { _id: user._id },
+          { $set: { weeklyBestScore: 0 } }
+        );
+      } else {
+        // If user has 0 or 1 session, set to random value between 0-30
+        const randomScore = Math.floor(Math.random() * 31); // 0-30 inclusive
+        await UserProfile.updateOne(
+          { _id: user._id },
+          { $set: { weeklyBestScore: randomScore } }
+        );
+      }
+    }
+    
+    console.log('Weekly scores reset successfully with session-based logic');
   } catch (error) {
     console.error('Error resetting weekly scores:', error);
   }
 });
+
 
 
 
