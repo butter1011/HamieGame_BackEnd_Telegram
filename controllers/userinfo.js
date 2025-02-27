@@ -17,6 +17,7 @@ cron.schedule('0 0 * * *', async () => {
 
 // Weekly reset at midnight UTC on Sunday
 // Weekly reset at midnight UTC on Sunday
+// Weekly reset at midnight UTC on Sunday
 cron.schedule('0 0 * * 0', async () => {
   try {
     // Get all users
@@ -30,14 +31,29 @@ cron.schedule('0 0 * * 0', async () => {
         // If user has more than 1 session, reset to 0
         await UserProfile.updateOne(
           { _id: user._id },
-          { $set: { weeklyBestScore: 0 } }
+          { 
+            $set: { 
+              weeklyBestScore: 0,
+              weeklyBestScores: [0, 0, 0] 
+            } 
+          }
         );
       } else {
-        // If user has 0 or 1 session, set to random value between 0-30
-        const randomScore = Math.floor(Math.random() * 31); // 0-30 inclusive
+        // If user has 0 or 1 session, set to random values between 0-30
+        const randomScores = [
+          Math.floor(Math.random() * 31),
+          Math.floor(Math.random() * 31),
+          Math.floor(Math.random() * 31)
+        ];
+        
         await UserProfile.updateOne(
           { _id: user._id },
-          { $set: { weeklyBestScore: randomScore } }
+          { 
+            $set: { 
+              weeklyBestScore: randomScores[0], // Set the main score to the first random value
+              weeklyBestScores: randomScores 
+            } 
+          }
         );
       }
     }
@@ -47,6 +63,7 @@ cron.schedule('0 0 * * 0', async () => {
     console.error('Error resetting weekly scores:', error);
   }
 });
+
 
 
 
@@ -113,12 +130,9 @@ exports.userDataSave = async (req, res) => {
       today.setUTCHours(0, 0, 0, 0);
 
       const lastSunday = new Date(currentDate);
-
       lastSunday.setUTCHours(0, 0, 0, 0);
       const daysSinceSunday = lastSunday.getUTCDay();
-
       lastSunday.setUTCDate(lastSunday.getUTCDate() - daysSinceSunday);
-
 
       // Reset scores if needed
       if (user.updatedAt < today) {
@@ -126,18 +140,30 @@ exports.userDataSave = async (req, res) => {
       }
       if (user.updatedAt < lastSunday) {
         user.weeklyBestScore = 0;
+        user.weeklyBestScores = [0, 0, 0];
       }
 
       // Update scores
       if (user.bestScore < score) {
         user.bestScore = score;
       }
-      if (user.dailyBestScore < score) {
-        user.dailyBestScore = score;
-      }
       if (user.weeklyBestScore < score) {
         user.weeklyBestScore = score;
-      }
+    }
+
+    if (!Array.isArray(user.weeklyBestScores) || user.weeklyBestScores.length < 3) {
+        user.weeklyBestScores = [0, 0, 0];
+    }
+
+    // Find minimum value in weeklyBestScores
+    const minWeeklyScore = Math.min(...user.weeklyBestScores);
+
+    // If the new score is greater than the minimum weekly score, replace the minimum
+    if (score > minWeeklyScore) {
+        const minIndex = user.weeklyBestScores.indexOf(minWeeklyScore);
+        user.weeklyBestScores[minIndex] = score;
+        user.weeklyBestScores.sort((a, b) => b - a); // Re-sort
+    }
 
       // Create new game session
       const newGameSession = new GameSession({
@@ -158,21 +184,48 @@ exports.userDataSave = async (req, res) => {
 
 // Get daily leaderboard and sessions
 exports.getDailyData = async (req, res) => {
-
   try {
-
     const today = new Date();
     today.setUTCHours(0, 0, 0, 0);
 
-    // Get top 100 users for daily scores
-    const userlist = await UserProfile.find({
-      updatedAt: { $gte: today }
-    })
-      .sort({ dailyBestScore: -1 });
-    const averageDailyScore = userlist.reduce((sum, user) => sum + user.dailyBestScore, 0) / userlist.length;
+    const userlist = await UserProfile.aggregate([
+      {
+        $lookup: {
+          from: 'gamesessions',
+          let: { userId: '$_id' },
+          pipeline: [
+            {
+              $match: {
+                $expr: { $eq: ['$user', '$$userId'] },
+                startTime: { $gte: today } // Filter sessions by date within the lookup
+              }
+            },
+            { $limit: 1 } // Limit to 1 to check for existence
+          ],
+          as: 'sessionCheck'
+        }
+      },
+      {
+        $match: {
+          'sessionCheck.0': { $exists: true } // Filter users who have sessions today
+        }
+      },
+      {
+        $project: {
+          sessionCheck: 0 // Remove the sessionCheck field from output
+        }
+      },
+      {
+        $sort: { dailyBestScore: -1 } // Sort by dailyBestScore
+      }
+    ]);
 
-    // Get top 100 sessions for today
+    const averageDailyScore = userlist.length > 0 ? userlist.reduce((sum, user) => sum + user.dailyBestScore, 0) / userlist.length : 0;
+
+    // Now that we have userlist filtered, get the sessions for those users
+    const userIds = userlist.map(user => user._id);
     const sessions = await GameSession.find({
+      user: { $in: userIds },
       startTime: { $gte: today }
     })
       .populate('user', 'username firstName lastName')
@@ -191,33 +244,59 @@ exports.getDailyData = async (req, res) => {
   }
 };
 
+
+
 // Get weekly leaderboard and sessions
 exports.getWeeklyData = async (req, res) => {
-
   try {
-
     const currentDate = new Date();
     const lastSunday = new Date(currentDate);
-
     lastSunday.setUTCHours(0, 0, 0, 0);
-
     const daysSinceSunday = lastSunday.getUTCDay();
     lastSunday.setUTCDate(lastSunday.getUTCDate() - daysSinceSunday);
 
-    // Get top 100 users for weekly scores
-    const userlist = await UserProfile.find({
-      updatedAt: { $gte: lastSunday }
-    })
-      .sort({ weeklyBestScore: -1 })
-    const averageWeeklyScore = userlist.reduce((sum, user) => sum + user.weeklyBestScore, 0) / userlist.length;
-    const bestUser = await UserProfile.findOne().sort({ bestScore: -1 });
-    // Get top 100 sessions for the week
+    const userlist = await UserProfile.aggregate([
+      {
+        $lookup: {
+          from: 'gamesessions',
+          let: { userId: '$_id' },
+          pipeline: [
+            {
+              $match: {
+                $expr: { $eq: ['$user', '$$userId'] },
+                startTime: { $gte: lastSunday } // Filter sessions by date within the lookup
+              }
+            },
+            { $limit: 1 } // Limit to 1 to check for existence
+          ],
+          as: 'sessionCheck'
+        }
+      },
+      {
+        $match: {
+          'sessionCheck.0': { $exists: true } // Filter users who have sessions in the date range
+        }
+      },
+      {
+        $project: {
+          sessionCheck: 0 // Remove the sessionCheck field from output
+        }
+      },
+      {
+        $sort: { weeklyBestScore: -1 } // Sort by weeklyBestScore
+      }
+    ]);
+
+    const averageWeeklyScore = userlist.length > 0 ? userlist.reduce((sum, user) => sum + user.weeklyBestScore, 0) / userlist.length : 0;
+
+    // Now that we have userlist filtered, get the sessions for those users
+    const userIds = userlist.map(user => user._id);
     const sessions = await GameSession.find({
+      user: { $in: userIds },
       startTime: { $gte: lastSunday }
     })
       .populate('user', 'username firstName lastName')
-      .sort({ score: -1 })
-      ;
+      .sort({ score: -1 });
 
     const currentTime = new Date().toUTCString();
 
@@ -232,51 +311,64 @@ exports.getWeeklyData = async (req, res) => {
   }
 };
 
+
+
+
 exports.getWeeklyDataForLeard = async (req, res) => {
-  try {
-    const currentDate = new Date();
-    const lastSunday = new Date(currentDate);
-    lastSunday.setUTCHours(0, 0, 0, 0);
-    const daysSinceSunday = lastSunday.getUTCDay();
-    lastSunday.setUTCDate(lastSunday.getUTCDate() - daysSinceSunday);
+    try {
+        const currentDate = new Date();
+        const lastSunday = new Date(currentDate);
+        lastSunday.setUTCHours(0, 0, 0, 0);
+        const daysSinceSunday = lastSunday.getUTCDay();
+        lastSunday.setUTCDate(lastSunday.getUTCDate() - daysSinceSunday);
 
-    // Get weekly active users with score > 30
-    const weeklyUsers = await UserProfile.find({
-      updatedAt: { $gte: lastSunday },
-      weeklyBestScore: { $gt: 30 }
-    }).sort({ weeklyBestScore: -1 });
+        // Get all users, sorted by weeklyBestScore, limited to 100
+        const users = await UserProfile.find().sort({ weeklyBestScore: -1 }).limit(100);
 
-    // Get additional users with score > 30
-    const additionalUsers = await UserProfile.find({
-      _id: { $nin: weeklyUsers.map(user => user._id) },
-      weeklyBestScore: { $lt: 30 }
-    }).sort({ weeklyBestScore: -1 });
+        // Find users with NO sessions
+        const usersWithNoSessions = await UserProfile.find({
+            _id: { $nin: await GameSession.distinct('user') } // Users NOT in GameSession
+        });
 
+        const userlist = users.map(user => {
+            if (usersWithNoSessions.some(noSessionUser => noSessionUser._id.equals(user._id))) {
+                // Generate fake scores for users with no sessions
+                const weeklyBestScores = Array.from({ length: 3 }, () => Math.floor(Math.random() * 30));
+                weeklyBestScores.sort((a, b) => b - a);
+                return { ...user._doc, weeklyBestScores };
+            } else {
+                // Use existing weeklyBestScores if available and valid
+                if (!Array.isArray(user.weeklyBestScores) || user.weeklyBestScores.length < 3 || user.weeklyBestScores.every(score => score <= 0)) {
+                    // If weeklyBestScores is invalid, generate fake scores
+                    const weeklyBestScores = Array.from({ length: 3 }, () => Math.floor(Math.random() * 30));
+                    weeklyBestScores.sort((a, b) => b - a);
+                    return { ...user._doc, weeklyBestScores };
+                } else {
+                    return { ...user._doc, weeklyBestScores: user.weeklyBestScores };
+                }
+            }
+        });
 
-    // Combine and sort all users
-    const userlist = [...weeklyUsers, ...additionalUsers]
-      .sort((a, b) => {
-        const scoreA = a.weeklyBestScore;
-        const scoreB = b.weeklyBestScore;
-        return scoreB - scoreA;
-      })
-      .slice(0, 100);
+        const bestUser = await UserProfile.findOne().sort({ bestScore: -1 });
+        const currentTime = new Date().toUTCString();
 
-    const bestUser = await UserProfile.findOne().sort({ bestScore: -1 });
-
-
-
-    const currentTime = new Date().toUTCString();
-
-    res.status(200).json({
-      userlist,
-      bestUser,
-      currentTime
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
+        res.status(200).json({
+            userlist,
+            bestUser,
+            currentTime
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
 };
+
+
+
+
+
+
+
+
 
 exports.getTotalData = async (req, res) => {
   try {

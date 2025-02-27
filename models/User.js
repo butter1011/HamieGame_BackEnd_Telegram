@@ -19,6 +19,10 @@ const userProfileSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  weeklyBestScores: {
+    type: [Number],
+    default: [0, 0, 0] // Initialize with three zeros
+  },
   bestScore: {
     type: Number,
     default: 0
