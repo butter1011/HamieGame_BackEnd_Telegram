@@ -1822,6 +1822,16 @@ self.C3_ExpressionFuncs = [
 			return () => and(",", n0.ExpObject((and("userlist.", v1.GetValue()) + ".weeklyBestScore")));
 		},
 		p => {
+			const n0 = p._GetNode(0);
+			const v1 = p._GetNode(1).GetVar();
+			return () => and(",", n0.ExpObject((and((and("userlist.", v1.GetValue()) + ".weeklyBestScores."), 1) + "")));
+		},
+		p => {
+			const n0 = p._GetNode(0);
+			const v1 = p._GetNode(1).GetVar();
+			return () => and(",", n0.ExpObject((and((and("userlist.", v1.GetValue()) + ".weeklyBestScores."), 2) + "")));
+		},
+		p => {
 			const v0 = p._GetNode(0).GetVar();
 			return () => (v0.GetValue() - 1);
 		},
@@ -1831,12 +1841,12 @@ self.C3_ExpressionFuncs = [
 			const n2 = p._GetNode(2);
 			return () => (n0.ExpObject() + (f1() * (n2.ExpObject() + 20)));
 		},
-		() => 700,
+		() => 800,
 		p => {
 			const n0 = p._GetNode(0);
 			const f1 = p._GetNode(1).GetBoundMethod();
 			const n2 = p._GetNode(2);
-			return () => ((n0.ExpObject() + (f1() * (n2.ExpObject() + 20))) + 20);
+			return () => ((n0.ExpObject() + (f1() * (n2.ExpObject() + 20))) - 70);
 		},
 		() => 330,
 		p => {
@@ -1853,12 +1863,25 @@ self.C3_ExpressionFuncs = [
 			return () => f0(v1.GetValue(), f2(), ",");
 		},
 		() => 268,
+		p => {
+			const n0 = p._GetNode(0);
+			const f1 = p._GetNode(1).GetBoundMethod();
+			const n2 = p._GetNode(2);
+			return () => ((n0.ExpObject() + (f1() * (n2.ExpObject() + 20))) + 20);
+		},
 		() => 750,
 		p => {
 			const n0 = p._GetNode(0);
 			const f1 = p._GetNode(1).GetBoundMethod();
 			const n2 = p._GetNode(2);
-			return () => ((n0.ExpObject() + (f1() * (n2.ExpObject() + 20))) - 10);
+			return () => ((n0.ExpObject() + (f1() * (n2.ExpObject() + 20))) + 5);
+		},
+		() => 850,
+		p => {
+			const n0 = p._GetNode(0);
+			const f1 = p._GetNode(1).GetBoundMethod();
+			const n2 = p._GetNode(2);
+			return () => ((n0.ExpObject() + (f1() * (n2.ExpObject() + 20))) + 8);
 		},
 		p => {
 			const v0 = p._GetNode(0).GetVar();

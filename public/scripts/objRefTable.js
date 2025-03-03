@@ -216,6 +216,8 @@ self.C3_JsPropNameTable = [
 	{num1: 0},
 	{num2: 0},
 	{num3: 0},
+	{UsersScore2: 0},
+	{UsersScore3: 0},
 	{score_board: 0},
 	{Touch: 0},
 	{LocalStorage: 0},
@@ -237,6 +239,7 @@ self.C3_JsPropNameTable = [
 	{Rotate: 0},
 	{Sprite4: 0},
 	{HTMLElement: 0},
+	{secondScore: 0},
 	{var_state: 0},
 	{music_controller1: 0},
 	{game_start: 0},
@@ -262,6 +265,8 @@ self.C3_JsPropNameTable = [
 	{sc_name: 0},
 	{sc_ranking: 0},
 	{sc_value: 0},
+	{sc_value2: 0},
+	{sc_value3: 0},
 	{length: 0},
 	{yourRank: 0},
 	{yourScore: 0},
@@ -359,6 +364,8 @@ self.InstanceType = {
 	num1: class extends self.ISpriteFontInstance {},
 	num2: class extends self.ISpriteFontInstance {},
 	num3: class extends self.ISpriteFontInstance {},
+	UsersScore2: class extends self.ITextInstance {},
+	UsersScore3: class extends self.ITextInstance {},
 	score_board: class extends self.ISpriteInstance {},
 	Touch: class extends self.IInstance {},
 	LocalStorage: class extends self.IInstance {},
@@ -378,5 +385,6 @@ self.InstanceType = {
 	scrollBar: class extends self.ISpriteInstance {},
 	SpriteFont: class extends self.ISpriteFontInstance {},
 	Sprite4: class extends self.ISpriteInstance {},
-	HTMLElement: class extends self.IHTMLElementInstance {}
+	HTMLElement: class extends self.IHTMLElementInstance {},
+	secondScore: class extends self.ITextInstance {}
 }

@@ -43,7 +43,7 @@ const scriptsInEvents = {
 		
 			runtime.callFunction("InitUser");
 		}
-		
+		// runtime.callFunction("InitUser");
 	},
 
 	async EventScore_Event2_Act1(runtime, localVars)
