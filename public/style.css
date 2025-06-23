@@ -10,6 +10,10 @@ body {
 	color: white;
 }
 
+input[type="file"] {
+	color: black;
+}
+
 html, body, canvas {
 	touch-action-delay: none;
 	touch-action: none;
