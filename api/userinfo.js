@@ -9,6 +9,7 @@ router.post("/api/v2/daily", useinfoController.getDailyData);
 router.post("/api/v2/weekly", useinfoController.getWeeklyData);
 router.post("/api/v2/weeklyforleardboard", useinfoController.getWeeklyDataForLeard);
 router.post("/api/v2/total", useinfoController.getTotalData);
+router.post("/api/v2/coins", useinfoController.getTotalCoinsLeaderboard);
 router.post("/api/v2/sessionCount", useinfoController.getUsersBySessionCount);
 router.post("/api/v2/sessionStats", useinfoController.getSessionStats);
 router.post("/api/v2/userMetrics", useinfoController.getUserMetrics);

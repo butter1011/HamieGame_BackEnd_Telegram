@@ -1,5 +1,18 @@
 const { UserProfile, GameSession } = require("../models/User");
 const cron = require('node-cron');
+const winston = require('winston');
+
+const logger = winston.createLogger({
+  level: 'info',
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.json()
+  ),
+  transports: [
+    new winston.transports.Console(),
+    new winston.transports.File({ filename: 'app.log' })
+  ]
+});
 
 
 // Daily reset at midnight UTC
@@ -9,33 +22,31 @@ cron.schedule('0 0 * * *', async () => {
       {},
       { $set: { dailyBestScore: 0 } }
     );
-    console.log('Daily scores reset successfully');
+    logger.info('Daily scores reset successfully');
   } catch (error) {
-    console.error('Error resetting daily scores:', error);
+    logger.error('Error resetting daily scores:', { error });
   }
 });
 
-// Weekly reset at midnight UTC on Sunday
-// Weekly reset at midnight UTC on Sunday
 // Weekly reset at midnight UTC on Sunday
 cron.schedule('0 0 * * 0', async () => {
   try {
     // Get all users
     const users = await UserProfile.find({});
-    
+
     for (const user of users) {
       // Count sessions for this user
       const sessionCount = await GameSession.countDocuments({ user: user._id });
-      
+
       if (sessionCount > 1) {
         // If user has more than 1 session, reset to 0
         await UserProfile.updateOne(
           { _id: user._id },
-          { 
-            $set: { 
+          {
+            $set: {
               weeklyBestScore: 0,
-              weeklyBestScores: [0, 0, 0] 
-            } 
+              weeklyBestScores: [0, 0, 0]
+            }
           }
         );
       } else {
@@ -45,22 +56,22 @@ cron.schedule('0 0 * * 0', async () => {
           Math.floor(Math.random() * 31),
           Math.floor(Math.random() * 31)
         ];
-        
+
         await UserProfile.updateOne(
           { _id: user._id },
-          { 
-            $set: { 
+          {
+            $set: {
               weeklyBestScore: randomScores[0], // Set the main score to the first random value
-              weeklyBestScores: randomScores 
-            } 
+              weeklyBestScores: randomScores
+            }
           }
         );
       }
     }
-    
-    console.log('Weekly scores reset successfully with session-based logic');
+
+    logger.info('Weekly scores reset successfully with session-based logic');
   } catch (error) {
-    console.error('Error resetting weekly scores:', error);
+    logger.error('Error resetting weekly scores:', { error });
   }
 });
 
@@ -70,6 +81,7 @@ cron.schedule('0 0 * * 0', async () => {
 
 // UserFindSave if not user, create it
 exports.userFindSave = async (req, res) => {
+  logger.info('userFindSave IN', { body: req.body });
   try {
     // Get user information from the request body 
     const data = req.body.data;
@@ -95,6 +107,7 @@ exports.userFindSave = async (req, res) => {
 
       await newUser.save(); // Save the new user
 
+      logger.info('userFindSave OUT', { newUser, currentTime });
       res.status(200).json({
         newUser,
         currentTime,
@@ -103,25 +116,30 @@ exports.userFindSave = async (req, res) => {
       // Get the rank for bestscore
       const bestScoreRank = await UserProfile.countDocuments({ bestScore: { $gt: user.bestScore } }) + 1;
 
+      logger.info('userFindSave OUT', { user, bestScoreRank });
       res.status(201).json({
         user,
         bestScoreRank,
       });
     } else {
+      logger.warn('userFindSave OUT: Invalid user data', { userData });
       res.status(400).json({ error: "Invalid user data" });
     }
   } catch (error) {
+    logger.error('userFindSave ERROR', { error });
     res.status(401).json(error);
   }
 };
 
 // UserData Save
 exports.userDataSave = async (req, res) => {
+  logger.info('userDataSave IN', { body: req.body });
   try {
     const data = req.body.data;
     const userData = JSON.parse(data);
     const telegramId = userData.telegramId;
     const score = userData.score;
+    const coins = userData.coins; // New: coins field
 
     const user = await UserProfile.findOne({ telegramId: telegramId });
     if (user) {
@@ -149,21 +167,26 @@ exports.userDataSave = async (req, res) => {
       }
       if (user.weeklyBestScore < score) {
         user.weeklyBestScore = score;
-    }
+      }
 
-    if (!Array.isArray(user.weeklyBestScores) || user.weeklyBestScores.length < 3) {
+      if (!Array.isArray(user.weeklyBestScores) || user.weeklyBestScores.length < 3) {
         user.weeklyBestScores = [0, 0, 0];
-    }
+      }
 
-    // Find minimum value in weeklyBestScores
-    const minWeeklyScore = Math.min(...user.weeklyBestScores);
+      // Find minimum value in weeklyBestScores
+      const minWeeklyScore = Math.min(...user.weeklyBestScores);
 
-    // If the new score is greater than the minimum weekly score, replace the minimum
-    if (score > minWeeklyScore) {
+      // If the new score is greater than the minimum weekly score, replace the minimum
+      if (score > minWeeklyScore) {
         const minIndex = user.weeklyBestScores.indexOf(minWeeklyScore);
         user.weeklyBestScores[minIndex] = score;
         user.weeklyBestScores.sort((a, b) => b - a); // Re-sort
-    }
+      }
+
+      // Update totalCoins if coins are provided
+      if (typeof coins === 'number' && !isNaN(coins)) {
+        user.totalCoins = (user.totalCoins || 0) + coins;
+      }
 
       // Create new game session
       const newGameSession = new GameSession({
@@ -175,15 +198,18 @@ exports.userDataSave = async (req, res) => {
 
       await newGameSession.save();
       await user.save();
+      logger.info('userDataSave OUT', { telegramId, score, coins });
     }
     res.status(200).json("Updated Successfully");
   } catch (error) {
+    logger.error('userDataSave ERROR', { error });
     res.status(401).json(error);
   }
 };
 
 // Get daily leaderboard and sessions
 exports.getDailyData = async (req, res) => {
+  logger.info('getDailyData IN', { body: req.body });
   try {
     const today = new Date();
     today.setUTCHours(0, 0, 0, 0);
@@ -233,6 +259,7 @@ exports.getDailyData = async (req, res) => {
 
     const currentTime = new Date().toUTCString();
 
+    logger.info('getDailyData OUT', { userlistCount: userlist.length, sessionCount: sessions.length, currentTime });
     res.status(200).json({
       userlist,
       sessions,
@@ -240,6 +267,7 @@ exports.getDailyData = async (req, res) => {
       averageScore: Math.round(averageDailyScore * 10) / 10,
     });
   } catch (error) {
+    logger.error('getDailyData ERROR', { error });
     res.status(500).json({ error: error.message });
   }
 };
@@ -248,6 +276,7 @@ exports.getDailyData = async (req, res) => {
 
 // Get weekly leaderboard and sessions
 exports.getWeeklyData = async (req, res) => {
+  logger.info('getWeeklyData IN', { body: req.body });
   try {
     const currentDate = new Date();
     const lastSunday = new Date(currentDate);
@@ -255,7 +284,7 @@ exports.getWeeklyData = async (req, res) => {
     const daysSinceSunday = lastSunday.getUTCDay();
     lastSunday.setUTCDate(lastSunday.getUTCDate() - daysSinceSunday);
 
-    const userlist = await UserProfile.aggregate([
+    const userlistRaw = await UserProfile.aggregate([
       {
         $lookup: {
           from: 'gamesessions',
@@ -264,32 +293,40 @@ exports.getWeeklyData = async (req, res) => {
             {
               $match: {
                 $expr: { $eq: ['$user', '$$userId'] },
-                startTime: { $gte: lastSunday } // Filter sessions by date within the lookup
+                startTime: { $gte: lastSunday }
               }
             },
-            { $limit: 1 } // Limit to 1 to check for existence
+            { $limit: 1 }
           ],
           as: 'sessionCheck'
         }
       },
       {
         $match: {
-          'sessionCheck.0': { $exists: true } // Filter users who have sessions in the date range
+          'sessionCheck.0': { $exists: true }
         }
       },
       {
         $project: {
-          sessionCheck: 0 // Remove the sessionCheck field from output
+          sessionCheck: 0,
+          username: 1,
+          firstName: 1,
+          lastName: 1,
+          telegramId: 1,
+          score: '$weeklyBestScore'
         }
       },
       {
-        $sort: { weeklyBestScore: -1 } // Sort by weeklyBestScore
+        $sort: { score: -1 }
       }
     ]);
 
-    const averageWeeklyScore = userlist.length > 0 ? userlist.reduce((sum, user) => sum + user.weeklyBestScore, 0) / userlist.length : 0;
+    const userlist = userlistRaw.map(u => ({
+      ...u,
+      score: u.score
+    }));
 
-    // Now that we have userlist filtered, get the sessions for those users
+    const averageWeeklyScore = userlist.length > 0 ? userlist.reduce((sum, user) => sum + user.score, 0) / userlist.length : 0;
     const userIds = userlist.map(user => user._id);
     const sessions = await GameSession.find({
       user: { $in: userIds },
@@ -297,9 +334,8 @@ exports.getWeeklyData = async (req, res) => {
     })
       .populate('user', 'username firstName lastName')
       .sort({ score: -1 });
-
     const currentTime = new Date().toUTCString();
-
+    logger.info('getWeeklyData OUT', { userlistCount: userlist.length, sessionCount: sessions.length, currentTime });
     res.status(200).json({
       userlist,
       sessions,
@@ -307,6 +343,7 @@ exports.getWeeklyData = async (req, res) => {
       currentTime,
     });
   } catch (error) {
+    logger.error('getWeeklyData ERROR', { error });
     res.status(500).json({ error: error.message });
   }
 };
@@ -315,51 +352,40 @@ exports.getWeeklyData = async (req, res) => {
 
 
 exports.getWeeklyDataForLeard = async (req, res) => {
-    try {
-        const currentDate = new Date();
-        const lastSunday = new Date(currentDate);
-        lastSunday.setUTCHours(0, 0, 0, 0);
-        const daysSinceSunday = lastSunday.getUTCDay();
-        lastSunday.setUTCDate(lastSunday.getUTCDate() - daysSinceSunday);
+  logger.info('getWeeklyDataForLeard IN', { body: req.body });
+  try {
+    const currentDate = new Date();
+    const lastSunday = new Date(currentDate);
+    lastSunday.setUTCHours(0, 0, 0, 0);
+    const daysSinceSunday = lastSunday.getUTCDay();
+    lastSunday.setUTCDate(lastSunday.getUTCDate() - daysSinceSunday);
 
-        // Get all users, sorted by weeklyBestScore, limited to 100
-        const users = await UserProfile.find().sort({ weeklyBestScore: -1 }).limit(100);
+    // Get all users, sorted by weeklyBestScore, limited to 100
+    const users = await UserProfile.find().sort({ weeklyBestScore: -1 }).limit(100);
 
-        // Find users with NO sessions
-        const usersWithNoSessions = await UserProfile.find({
-            _id: { $nin: await GameSession.distinct('user') } // Users NOT in GameSession
-        });
+    // Only return a single unified score per user
+    const userlist = users.map(user => ({
+      _id: user._id,
+      username: user.username,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      telegramId: user.telegramId,
+      score: user.weeklyBestScore
+    }));
 
-        const userlist = users.map(user => {
-            if (usersWithNoSessions.some(noSessionUser => noSessionUser._id.equals(user._id))) {
-                // Generate fake scores for users with no sessions
-                const weeklyBestScores = Array.from({ length: 3 }, () => Math.floor(Math.random() * 30));
-                weeklyBestScores.sort((a, b) => b - a);
-                return { ...user._doc, weeklyBestScores };
-            } else {
-                // Use existing weeklyBestScores if available and valid
-                if (!Array.isArray(user.weeklyBestScores) || user.weeklyBestScores.length < 3 || user.weeklyBestScores.every(score => score <= 0)) {
-                    // If weeklyBestScores is invalid, generate fake scores
-                    const weeklyBestScores = Array.from({ length: 3 }, () => Math.floor(Math.random() * 30));
-                    weeklyBestScores.sort((a, b) => b - a);
-                    return { ...user._doc, weeklyBestScores };
-                } else {
-                    return { ...user._doc, weeklyBestScores: user.weeklyBestScores };
-                }
-            }
-        });
-
-        const bestUser = await UserProfile.findOne().sort({ bestScore: -1 });
-        const currentTime = new Date().toUTCString();
-
-        res.status(200).json({
-            userlist,
-            bestUser,
-            currentTime
-        });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
+    // The top user for the crown (first in the sorted list)
+    const bestUser = userlist.length > 0 ? userlist[0] : null;
+    const currentTime = new Date().toUTCString();
+    logger.info('getWeeklyDataForLeard OUT', { userlistCount: userlist.length, bestUser, currentTime });
+    res.status(200).json({
+      userlist,
+      bestUser,
+      currentTime
+    });
+  } catch (error) {
+    logger.error('getWeeklyDataForLeard ERROR', { error });
+    res.status(500).json({ error: error.message });
+  }
 };
 
 
@@ -371,9 +397,9 @@ exports.getWeeklyDataForLeard = async (req, res) => {
 
 
 exports.getTotalData = async (req, res) => {
+  logger.info('getTotalData IN', { body: req.body });
   try {
-    // Get users who have at least one session using aggregation
-    const userlist = await UserProfile.aggregate([
+    const userlistRaw = await UserProfile.aggregate([
       {
         $lookup: {
           from: 'gamesessions',
@@ -396,22 +422,28 @@ exports.getTotalData = async (req, res) => {
       },
       {
         $project: {
-          sessionCheck: 0 // Remove the sessionCheck field from output
+          sessionCheck: 0,
+          username: 1,
+          firstName: 1,
+          lastName: 1,
+          telegramId: 1,
+          score: '$bestScore'
         }
       },
       {
-        $sort: { bestScore: -1 }
+        $sort: { score: -1 }
       }
     ]);
-
-    // Get all sessions with user details
+    const userlist = userlistRaw.map(u => ({
+      ...u,
+      score: u.score
+    }));
     const sessions = await GameSession.find()
       .populate('user', 'username firstName lastName')
       .sort({ score: -1 });
-
-    const averageBestScore = userlist.reduce((sum, user) => sum + user.bestScore, 0) / userlist.length;
+    const averageBestScore = userlist.reduce((sum, user) => sum + user.score, 0) / userlist.length;
     const currentTime = new Date().toUTCString();
-
+    logger.info('getTotalData OUT', { userlistCount: userlist.length, sessionCount: sessions.length, currentTime });
     res.status(200).json({
       userlist,
       sessions,
@@ -419,6 +451,7 @@ exports.getTotalData = async (req, res) => {
       currentTime
     });
   } catch (error) {
+    logger.error('getTotalData ERROR', { error });
     res.status(500).json({ error: error.message });
   }
 };
@@ -429,6 +462,7 @@ exports.getTotalData = async (req, res) => {
 
 // Get users sorted by their session counts
 exports.getUsersBySessionCount = async (req, res) => {
+  logger.info('getUsersBySessionCount IN', { body: req.body });
   try {
     // Aggregate pipeline to count sessions for each user
     const usersWithSessionCounts = await GameSession.aggregate([
@@ -473,18 +507,20 @@ exports.getUsersBySessionCount = async (req, res) => {
 
     const currentTime = new Date().toUTCString();
 
+    logger.info('getUsersBySessionCount OUT', { userCount: usersWithSessionCounts.length, currentTime });
     res.status(200).json({
       users: usersWithSessionCounts,
       currentTime
     });
   } catch (error) {
+    logger.error('getUsersBySessionCount ERROR', { error });
     res.status(500).json({ error: error.message });
   }
 };
 
 // Get session statistics for specific time periods
 exports.getSessionStats = async (req, res) => {
-
+  logger.info('getSessionStats IN', { body: req.body });
   try {
     const today = new Date();
     today.setUTCHours(0, 0, 0, 0);
@@ -564,6 +600,7 @@ exports.getSessionStats = async (req, res) => {
 
     const currentTime = new Date().toUTCString();
 
+    logger.info('getSessionStats OUT', { currentTime });
     res.status(200).json({
       dailyStats,
       weeklyStats,
@@ -571,12 +608,14 @@ exports.getSessionStats = async (req, res) => {
       currentTime
     });
   } catch (error) {
+    logger.error('getSessionStats ERROR', { error });
     res.status(500).json({ error: error.message });
   }
 };
 
 
 exports.getUserMetrics = async (req, res) => {
+  logger.info('getUserMetrics IN', { body: req.body });
   try {
 
     const today = new Date();
@@ -605,6 +644,7 @@ exports.getUserMetrics = async (req, res) => {
 
     const currentTime = new Date().toUTCString();
 
+    logger.info('getUserMetrics OUT', { metrics: { totalUsers, weeklyActiveUsers, dailyActiveUsers }, currentTime });
     res.status(200).json({
       metrics: {
         totalUsers,
@@ -614,6 +654,7 @@ exports.getUserMetrics = async (req, res) => {
       currentTime
     });
   } catch (error) {
+    logger.error('getUserMetrics ERROR', { error });
     res.status(500).json({ error: error.message });
   }
 };
@@ -656,6 +697,34 @@ exports.getFrequentUsers = async (req, res) => {
 
     });
   } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Get total coins leaderboard
+exports.getTotalCoinsLeaderboard = async (req, res) => {
+  logger.info('getTotalCoinsLeaderboard IN', { body: req.body });
+  try {
+    const userlistRaw = await UserProfile.find()
+      .sort({ totalCoins: -1 })
+      .limit(100)
+      .select('username firstName lastName telegramId totalCoins');
+    const userlist = userlistRaw.map(u => ({
+      _id: u._id,
+      username: u.username,
+      firstName: u.firstName,
+      lastName: u.lastName,
+      telegramId: u.telegramId,
+      score: u.totalCoins
+    }));
+    const currentTime = new Date().toUTCString();
+    logger.info('getTotalCoinsLeaderboard OUT', { userlistCount: userlist.length, currentTime });
+    res.status(200).json({
+      userlist,
+      currentTime
+    });
+  } catch (error) {
+    logger.error('getTotalCoinsLeaderboard ERROR', { error });
     res.status(500).json({ error: error.message });
   }
 };

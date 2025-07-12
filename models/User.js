@@ -26,6 +26,10 @@ const userProfileSchema = new mongoose.Schema({
   bestScore: {
     type: Number,
     default: 0
+  },
+  totalCoins: {
+    type: Number,
+    default: 0
   }
 }, { timestamps: true });
 
